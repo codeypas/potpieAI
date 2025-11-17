@@ -12,8 +12,8 @@ class Settings:
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
     
-    # OpenAI
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
     
     # GitHub
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
