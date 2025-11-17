@@ -1,6 +1,6 @@
 # PotPieAI Code Review System
 
-An autonomous agent system that uses AI to analyze GitHub pull requests asynchronously.
+An autonomous AI agent system that analyzes GitHub pull requests asynchronously.
 
 ---
 
@@ -15,9 +15,80 @@ An autonomous agent system that uses AI to analyze GitHub pull requests asynchro
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Clone the project
+git clone https://github.com/yourusername/PotPieAI.git
+cd PotPieAI
+
+# 2. Create virtual environment
+python -m venv venv
+
+# 3. Activate environment
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Create .env file with API keys and GitHub token
+# Example:
+# OPENAI_API_KEY=your_openai_key
+# GITHUB_TOKEN=your_github_pat
+
+# 6. Set up MySQL database
+
+# 7. Start Redis server
+redis-server
+
+# 8. Start Celery worker in Terminal 1
+celery -A app.tasks worker --loglevel=info
+
+# 9. Start FastAPI server in Terminal 2
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 10. Test API
+python test_api.py
+
+```
+
+---
+
+## API Endpoints
+
+- `POST /analyze-pr` - Queue PR for analysis  
+- `GET /status/<task_id>` - Check task status  
+- `GET /results/<task_id>` - Get analysis results  
+- `GET /tasks` - List recent tasks  
+- `GET /health` - Health check  
+
+
+---
+
+## Testing Steps
+
+**1. Queue PR for analysis**  
+
+```bash
+curl -X POST "http://localhost:8000/analyze-pr" \
+-H "Content-Type: application/json" \
+-d '{
+    "repo_url": "https://github.com/torvalds/linux",
+    "pr_number": 1,
+    "github_token": "your_github_token"
+}'
+
+
+```
+---
+
+
 ## Expected Output Format
 
-```json
+```bash
 {
     "task_id": "abc123",
     "status": "completed",
@@ -40,30 +111,9 @@ An autonomous agent system that uses AI to analyze GitHub pull requests asynchro
             "total_issues": 2,
             "critical_issues": 1
         }
-    }
+    },
+    "error_message": null
 }
+```
+---
 
-## Quick Start
-
-1. Clone/Extract project
-2. Create virtual environment: `python -m venv venv`
-3. Activate: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Create `.env` file with API keys
-6. Set up MySQL database
-7. Start Redis server
-8. Start Celery worker in Terminal 1
-9. Start FastAPI in Terminal 2
-10. Test with `python test_api.py`
-
-## API Endpoints
-
-- `POST /analyze-pr` - Queue PR for analysis
-- `GET /status/<task_id>` - Check task status
-- `GET /results/<task_id>` - Get analysis results
-- `GET /tasks` - List recent tasks
-- `GET /health` - Health check
-
-## Documentation
-
-Access Swagger UI at: http://localhost:8000/docs
