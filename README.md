@@ -1,19 +1,23 @@
 # PotPieAI Code Review System
 
-An autonomous agent system that uses AI to analyze GitHub pull requests with asynchronous processing.
+An autonomous agent system that uses AI to analyze GitHub pull requests asynchronously.
+
+---
 
 ## Features
 
-- ✅ GitHub PR Analysis via API
-- ✅ AI-powered code review (style, bugs, performance, best practices)
-- ✅ Asynchronous task processing with Celery
-- ✅ Task status tracking and result retrieval
-- ✅ Multiple programming language support
-- ✅ Structured JSON API responses
+- ✅ Analyze GitHub PRs via API  
+- ✅ AI-powered code review (style, bugs, performance, best practices)  
+- ✅ Asynchronous task processing with Celery  
+- ✅ Task status tracking and result retrieval  
+- ✅ Multiple programming language support  
+- ✅ Structured JSON API responses  
+
+---
 
 ## Expected Output Format
 
-\`\`\`json
+```json
 {
     "task_id": "abc123",
     "status": "completed",
@@ -38,7 +42,6 @@ An autonomous agent system that uses AI to analyze GitHub pull requests with asy
         }
     }
 }
-\`\`\`
 
 ## Quick Start
 
