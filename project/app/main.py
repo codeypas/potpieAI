@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import json
@@ -60,6 +61,26 @@ class TaskResult(BaseModel):
     status: str
     results: dict = None
     error_message: str = None
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title="AI Code Review System",
+        version="1.0.0",
+        description="Autonomous agent for analyzing GitHub pull requests",
+        routes=app.routes,
+    )
+    
+    # Remove components/schemas section to hide unused schemas
+    if "components" in openapi_schema:
+        openapi_schema["components"]["schemas"] = {}
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 # Endpoints
 @app.get("/")
@@ -187,7 +208,7 @@ async def list_tasks(db: Session = Depends(get_db), limit: int = 10):
     ]
 
 def get_dashboard_html() -> str:
-    """Return clean dashboard UI"""
+    """Return clean dashboard UI - no schemas visible"""
     return """
 <!DOCTYPE html>
 <html lang="en">
@@ -208,6 +229,11 @@ def get_dashboard_html() -> str:
         .status-processing { background-color: #dbeafe; color: #1e40af; }
         .status-completed { background-color: #dcfce7; color: #166534; }
         .status-failed { background-color: #fee2e2; color: #991b1b; }
+        
+        .issue-type-style { color: #f59e0b; }
+        .issue-type-bug { color: #ef4444; }
+        .issue-type-performance { color: #8b5cf6; }
+        .issue-type-best_practice { color: #3b82f6; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 to-slate-800 text-white min-h-screen">
@@ -215,7 +241,7 @@ def get_dashboard_html() -> str:
         <!-- Header -->
         <div class="mb-8">
             <h1 class="text-4xl font-bold mb-2">AI Code Review System</h1>
-            <p class="text-slate-400">Autonomous agent for analyzing GitHub pull requests</p>
+            <p class="text-slate-400">Autonomous multi-agent code analysis with Ollama + LangChain</p>
         </div>
 
         <!-- Main Content -->
@@ -250,7 +276,7 @@ def get_dashboard_html() -> str:
 
             <!-- Stats -->
             <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 class="text-xl font-bold mb-4">Stats</h2>
+                <h2 class="text-xl font-bold mb-4">Statistics</h2>
                 <div class="space-y-3">
                     <div>
                         <p class="text-slate-400 text-sm">Total Tasks</p>
@@ -270,7 +296,7 @@ def get_dashboard_html() -> str:
 
         <!-- Tasks List -->
         <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 class="text-xl font-bold mb-4">Recent Tasks</h2>
+            <h2 class="text-xl font-bold mb-4">Recent Analysis Tasks</h2>
             <div id="tasksList" class="space-y-3">
                 <p class="text-slate-400">No tasks yet</p>
             </div>
@@ -281,7 +307,7 @@ def get_dashboard_html() -> str:
             <div class="bg-slate-800 rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto border border-slate-700">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold">Analysis Results</h3>
+                        <h3 class="text-xl font-bold">Code Review Results</h3>
                         <button onclick="closeModal()" class="text-slate-400 hover:text-white">✕</button>
                     </div>
                     <div id="resultsContent" class="space-y-4 text-sm"></div>
@@ -333,11 +359,11 @@ def get_dashboard_html() -> str:
                         <div class="bg-slate-700 p-4 rounded border border-slate-600 flex justify-between items-center">
                             <div>
                                 <p class="font-medium">${task.repo_url.split('/').slice(-2).join('/')}</p>
-                                <p class="text-sm text-slate-400">PR #${task.pr_number}</p>
+                                <p class="text-sm text-slate-400">PR #${task.pr_number} • ${new Date(task.created_at).toLocaleString()}</p>
                             </div>
                             <div class="flex gap-2 items-center">
                                 <span class="status-badge status-${status}">${status}</span>
-                                ${status === 'completed' ? `<button onclick="viewResults('${task.task_id}')" class="text-blue-400 hover:text-blue-300 text-sm">View</button>` : ''}
+                                ${status === 'completed' ? `<button onclick="viewResults('${task.task_id}')" class="text-blue-400 hover:text-blue-300 text-sm font-medium">View Results</button>` : ''}
                             </div>
                         </div>
                     `;
@@ -360,24 +386,28 @@ def get_dashboard_html() -> str:
                 let html = '';
                 if (data.status === 'completed' && data.results) {
                     const results = data.results;
-                    html += `<p class="mb-2"><strong>Files Analyzed:</strong> ${results.summary.total_files}</p>`;
-                    html += `<p class="mb-2"><strong>Total Issues:</strong> ${results.summary.total_issues}</p>`;
-                    html += `<p class="mb-4"><strong>Critical Issues:</strong> ${results.summary.critical_issues}</p>`;
+                    html += `<div class="bg-slate-700 p-3 rounded mb-4">`;
+                    html += `<p class="font-medium mb-2">Analysis Summary</p>`;
+                    html += `<p class="text-xs">Files: ${results.summary.total_files} • Issues: ${results.summary.total_issues} • Critical: ${results.summary.critical_issues}</p>`;
+                    html += `</div>`;
 
                     for (const file of results.files) {
-                        html += `<p class="font-medium text-blue-400 mb-2">${file.name}</p>`;
+                        html += `<p class="font-medium text-blue-400 mb-2 mt-3">📄 ${file.name}</p>`;
                         if (file.issues.length > 0) {
                             for (const issue of file.issues) {
-                                html += `<p class="text-xs ml-4 mb-1">• <strong>[${issue.type}]</strong> Line ${issue.line}: ${issue.description}</p>`;
+                                const issueClass = `issue-type-${issue.type.toLowerCase()}`;
+                                html += `<p class="text-xs ml-4 mb-2">Line ${issue.line} <span class="${issueClass}">[${issue.type.toUpperCase()}]</span></p>`;
+                                html += `<p class="text-xs ml-4 text-slate-300 mb-1">→ ${issue.description}</p>`;
+                                html += `<p class="text-xs ml-4 text-slate-400 mb-2">💡 ${issue.suggestion}</p>`;
                             }
                         } else {
                             html += `<p class="text-xs ml-4 text-green-400 mb-2">✓ No issues found</p>`;
                         }
                     }
                 } else if (data.error_message) {
-                    html = `<p class="text-red-400">${data.error_message}</p>`;
+                    html = `<p class="text-red-400 text-sm">Error: ${data.error_message}</p>`;
                 } else {
-                    html = `<p class="text-yellow-400">Status: ${data.status}</p>`;
+                    html = `<p class="text-yellow-400 text-sm">Status: ${data.status}</p>`;
                 }
 
                 document.getElementById('resultsContent').innerHTML = html;
@@ -391,7 +421,7 @@ def get_dashboard_html() -> str:
             document.getElementById('resultsModal').classList.add('hidden');
         }
 
-        // Auto-refresh tasks
+        // Auto-refresh tasks every 5 seconds
         loadTasks();
         setInterval(loadTasks, 5000);
     </script>
